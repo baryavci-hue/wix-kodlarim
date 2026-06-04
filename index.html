@@ -155,3 +155,25 @@
                     <input type="number" id="yas" required class="w-full p-2 border border-gray-300 rounded-lg text-sm outline-none">
                 </div>
                 <div>
+                    // Kodlar tamamen yüklendiğinde butonlara tıklama özelliği kazandırır
+document.addEventListener("DOMContentLoaded", function() {
+    // 1. Yeni Personel Ekle Butonunu Yakala ve Tıklama Ekle
+    const ekleButonu = document.querySelector("button[onclick*='personelModal']");
+    if (ekleButonu) {
+        // Eski onclick özelliğini temizle ve güvenli JS bağla
+        ekleButonu.removeAttribute("onclick");
+        ekleButonu.addEventListener("click", function() {
+            openModal('personelModal');
+        });
+    }
+
+    // 2. Kapatma (&times;) Butonunu Yakala ve Tıklama Ekle
+    const kapatButonu = document.querySelector("button[onclick*='closeModal']");
+    if (kapatButonu) {
+        kapatButonu.removeAttribute("onclick");
+        kapatButonu.addEventListener("click", function() {
+            closeModal('personelModal');
+        });
+    }
+});
+
