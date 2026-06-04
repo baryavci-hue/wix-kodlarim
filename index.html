@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HES Deterjan - İK Yönetim Paneli</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; }
+        .modal-card { width: 1400px; height: 1400px; max-width: 1400px; max-height: 1400px; }
+    </style>
+</head>
+<body class="p-6">
+
+    <div class="max-w-7xl mx-auto">
+        <div class="flex justify-between items-center mb-6 bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">İnsan Kaynakları Yönetim Paneli</h1>
+                <p class="text-sm text-gray-500">Personel kayıt, takip ve departman istatistikleri</p>
+            </div>
+            <button onclick="openModal('personelModal')" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium flex items-center gap-2 transition shadow-sm">
+                <i class="fas fa-user-plus"></i> Yeni Personel Ekle
+            </button>
+        </div>
+
+        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-100 mb-6">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <i class="fas fa-chart-pie text-blue-600"></i> Departman ve Personel İstatistikleri
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div class="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                    <p class="text-sm text-blue-600 font-medium">Toplam Personel / Kadın - Erkek</p>
+                    <p id="stat-total" class="text-2xl font-bold text-blue-900 mt-1">0 Kişi</p>
+                    <p id="stat-gender" class="text-xs text-blue-700 mt-1">0 Kadın / 0 Erkek</p>
+                </div>
+                <div class="bg-green-50 p-4 rounded-xl border border-green-100">
+                    <p class="text-sm text-green-600 font-medium">Toplam Net Maaş Bütçesi</p>
+                    <p id="stat-salary" class="text-2xl font-bold text-green-900 mt-1">₺0</p>
+                    <p id="stat-avg-salary" class="text-xs text-green-700 mt-1">Genel Ort: ₺0</p>
+                </div>
+                <div class="bg-purple-50 p-4 rounded-xl border border-purple-100">
+                    <p class="text-sm text-purple-600 font-medium">Yaş / Çalışma Süresi Ortalaması</p>
+                    <p id="stat-avg-age" class="text-2xl font-bold text-purple-900 mt-1">0 Yaş</p>
+                    <p id="stat-avg-work" class="text-xs text-purple-700 mt-1">0 Gün Ortalama Kıdem</p>
+                </div>
+                <div class="bg-amber-50 p-4 rounded-xl border border-amber-100">
+                    <p class="text-sm text-amber-600 font-medium">Kıdem Dağılımı (Süre bazlı)</p>
+                    <p id="stat-kidem-1" class="text-sm font-semibold text-amber-900 mt-1">6 Ayı Dolduran: 0</p>
+                    <p id="stat-kidem-2" class="text-xs text-amber-700">1 Yılı Dolduran: 0 | 2+ Yıl: 0</p>
+                </div>
+            </div>
+            
+            <div class="overflow-x-auto border border-gray-100 rounded-lg">
+                <table class="w-full text-sm text-left text-gray-500">
+                    <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3">Birim / Departman</th>
+                            <th class="px-4 py-3 text-center">Personel</th>
+                            <th class="px-4 py-3 text-center">Kadın/Erkek</th>
+                            <th class="px-4 py-3 text-right">Toplam Maaş</th>
+                            <th class="px-4 py-3 text-right">Ort. Maaş</th>
+                        </tr>
+                    </thead>
+                    <tbody id="unit-stats-body" class="divide-y divide-gray-100">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 mb-6 flex flex-col md:flex-row gap-4 justify-between items-center">
+            <div class="relative w-full md:w-72">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                    <i class="fas fa-search text-gray-400"></i>
+                </span>
+                <input type="text" id="searchInput" oninput="renderTable()" placeholder="İsim veya TC ile personel ara..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm outline-none">
+            </div>
+            
+            <div class="flex flex-wrap gap-2 w-full md:w-auto justify-end items-center">
+                <span class="text-xs font-semibold text-gray-500 uppercase mr-1">Sıralama:</span>
+                <select id="sortSelect" onchange="renderTable()" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm text-gray-600 outline-none bg-white">
+                    <option value="a-z">A'dan Z'ye Sırala</option>
+                    <option value="z-a">Z'den A'ya Sırala</option>
+                    <option value="maas-azalan">Maaş (Azalan)</option>
+                    <option value="maas-artan">Maaş (Artan)</option>
+                    <option value="tarih-yeni">Giriş Tarihi (Yeni)</option>
+                </select>
+                
+                <div class="h-6 w-px bg-gray-200 mx-2"></div>
+                
+                <span class="text-xs font-semibold text-gray-500 uppercase mr-1">Alfabetik Filtre:</span>
+                <div id="alphabetFilter" class="flex gap-0.5 overflow-x-auto max-w-md bg-gray-50 p-1 rounded-lg border border-gray-200">
+                    </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-50 border-b border-gray-100 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            <th class="p-4">Fotoğraf</th>
+                            <th class="p-4">Sicil No</th>
+                            <th class="p-4">Ad Soyad / T.C.</th>
+                            <th class="p-4">Birim / Servis</th>
+                            <th class="p-4">Giriş / Çalışma Günü</th>
+                            <th class="p-4">Yıllık İzin (Kalan)</th>
+                            <th class="p-4 text-right">Maaş</th>
+                            <th class="p-4 text-center">İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody id="personnelTableBody" class="divide-y divide-gray-100 text-sm text-gray-700">
+                        </tbody>
+                </table>
+            </div>
+            <div id="emptyState" class="hidden p-12 text-center text-gray-500">
+                <i class="fas fa-users-slash text-4xl mb-3 text-gray-300"></i>
+                <p>Kriterlere uygun personel kaydı bulunamadı.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="personelModal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center p-6 border-b border-gray-100">
+                <h3 class="text-lg font-bold text-gray-800">Yeni Personel Tanımlama</h3>
+                <button onclick="closeModal('personelModal')" class="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+            </div>
+            <form id="personelForm" onsubmit="savePersonel(event)" class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Personel Sicil No *</label>
+                    <input type="text" id="sicilNo" required class="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Ad Soyad *</label>
+                    <input type="text" id="adSoyad" required class="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">T.C. Kimlik No *</label>
+                    <input type="text" id="tcNo" maxlength="11" required class="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Cinsiyet *</label>
+                    <select id="cinsiyet" required class="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:border-blue-500 bg-white">
+                        <option value="Erkek">Erkek</option>
+                        <option value="Kadın">Kadın</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Doğum Tarihi *</label>
+                    <input type="date" id="dogumTarihi" required class="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">İşe Giriş Tarihi *</label>
+                    <input type="date" id="girisTarihi" required class="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Birimi *</label>
+                    <select id="birim" required class="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:border-blue-500 bg-white">
+                        <option value="Bakımhane Kazan Dairesi">Bakımhane Kazan Dairesi</option>
+                        <option value="Fabrika Bakımcı">Fabrika Bakımcı</option>
+                        <option value="Fabrika Depo">Fabrika Depo</option>
+                        <option value="Güvenlik Görevlisi">Güvenlik Görevlisi</option>
+                        <option value="Hat Sonu">Hat Sonu</option>
+                        <option value="İdari Personel">İdari Personel</option>
+                        <option value="İşletme">İşletme</option>
+                        <option value="Laboratuvar">Laboratuvar</option>
+                        <option value="Pazarlamacı Satış">Pazarlamacı Satış</option>
+                        <option value="Plastik Bölümü">Plastik Bölümü</option>
+                        <option value="Sevkiyat">Sevkiyat</option>
+                        <option value="Sıvı Bölümü Personel">Sıvı Bölümü Personel</option>
+                        <option value="Stajyer">Stajyer</option>
+                        <option value="Toz Bölümü Personeli">Toz Bölümü Personeli</option>
+                        <option value="Toz Paketleme">Toz Paketleme</option>
+                        <option value="Yemekhane">Yemekhane</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Net Maaş (₺) *</label>
+                    <input type="number" id="maas" required class="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Kan Grubu *</label>
+                    <select id="kanGrubu" required class="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:border-blue-500 bg-white">
+                        <option value="A Rhesus Pozitif (A+)">A+</option>
+                        <option value="A Rhesus Negatif (A-)">A-</option>
+                        <option value="B Rhesus Pozitif (B+)">B+</option>
+                        <option value="B Rhesus Negatif (B-)">B-</option>
+                        <option value="AB Rhesus Pozitif (AB+)">AB+</option>
+                        <option value="AB Rhesus Negatif (AB-)">AB-</option>
+                        <option value="0 Rhesus Pozitif (0+)">0+</option>
+                        <option value="0 Rhesus Negatif (0-)">0-</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Telefon Numarası *</label>
+                    <input type="tel" id="telefon" placeholder="05051234567" required class="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Toplam Yıllık İzin Hakkı (Gün) *</label>
+                    <input type="number" id="yillikIzinHak" required class="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Kullanılan Yıllık İzin (Gün) *</label>
+                    <input type="number" id="kullanilanIzin" required class="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Servis Güzergahı *</label>
+                    <select id="servis" required class="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:border-blue-500 bg-white">
+                        <option value="Kayseri">Kayseri</option>
+                        <option value="Develi">Develi</option>
+                        <option value="Tomarza">Tomarza</option>
+                        <option value="Şirket Aracı">Şirket Aracı</option>
+                        <option value="Özel Araç">Özel Araç</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Personel Fotoğrafı</label>
+                    <input type="file" id="foto" accept="image/*" class="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Özel Not Bölümü</label>
+                    <textarea id="ozelNot" rows="2" class="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:border-blue-500"></textarea>
+                </div>
+                <div class="md:col-span-2 flex justify-end gap-2 mt-2">
+                    <button type="button" onclick="closeModal('personelModal')" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200">İptal</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 shadow-sm">Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="cardModal" class="fixed inset-0 bg-black/60 hidden z-50 flex items-start justify-center p-4 overflow-y-auto backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-2xl my-4 flex flex-col" style="width: 1400px; min-height: 1400px;">
+            <div class="flex justify-between items-center p-6 bg-gray-900 text-white rounded-t-xl no-print">
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-id-card text-xl text-blue-400"></i>
+                    <span class="font-bold tracking-wide">1400x1400 Resmi Personel Kartı</span>
+                </div>
+                <div class="flex gap-3">
+                    <button id="pdfBtn" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition">
+                        <i class="fas fa-file-pdf"></i> PDF İndir
+                    </button>
+                    <button id="wpBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition">
+                        <i class="fab fa-whatsapp"></i> WhatsApp Gönder
+                    </button>
+                    <button onclick="closeModal('cardModal')" class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition">&times; Kapat</button>
+                </div>
+            </div>
+
+            <div id="printArea" class="bg-white p-12 relative flex flex-col justify-between" style="width: 1400px; height: 1400px; box-sizing: border-box;">
+                
+                <div class="flex justify-between items-start border-b-4 border-blue-600 pb-8">
+                    <div>
+                        <h2 class="text-4xl font-black text-gray-900 tracking-tight uppercase">HES DETERJAN SINAİ A.Ş.</h2>
+                        <p class="text-xl text-blue-600 font-bold tracking-widest uppercase mt-1">İNSAN KAYNAKLARI RESMİ PERSONEL KARTI</p>
+                    </div>
+                    <div class="text-right">
+                        <span id="card-sys-date" class="text-sm text-gray-400 font-mono">Döküm Tarihi: 01.01.2026</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-12 gap-10 my-auto items-stretch">
+                    <div class="col-span-4 flex flex-col items-center bg-gray-50 p-8 rounded-2xl border border-gray-200 justify-center">
+                        <img id="card-foto" src="https://via.placeholder.com/300x350?text=FOTO%C4%9ERAF" alt="Personel" class="w-72 h-84 object-cover rounded-xl shadow-md border-4 border-white mb-6">
+                        <div class="w-full text-center">
+                            <p class="text-gray-400 text-xs font-bold uppercase tracking-wider">SİCİL NUMARASI</p>
+                            <p id="card-sicil" class="text-3xl font-mono font-black text-gray-800 bg-gray-200 py-1.5 px-4 rounded-lg mt-1 inline-block">000000</p>
+                        </div>
+                        <div class="w-full mt-6 grid grid-cols-2 gap-2 text-center">
+                            <div class="bg-red-50 p-3 rounded-xl border border-red-100">
+                                <span class="block text-xs text-red-500 font-bold">KAN GRUBU</span>
+                                <span id="card-kan" class="text-xl font-black text-red-700">ARh+</span>
+                            </div>
+                            <div class="bg-amber-50 p-3 rounded-xl border border-amber-100">
+                                <span class="block text-xs text-amber-600 font-bold">SERVİS</span>
+                                <span id="card-servis" class="text-lg font-bold text-amber-800 truncate block">Merkez</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-span-8 flex flex-col justify-between">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="text-xs font-bold text-gray-400 uppercase tracking-widest">AD SOYAD</label>
+                                <div id="card-adsoyad" class="text-4xl font-black text-gray-900 border-b pb-2">Ahmet Yılmaz</div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-6 pt-2">
+                                <div>
+                                    <label class="text-xs font-bold text-gray-400 uppercase">T.C. KİMLİK NO</label>
+                                    <div id="card-tc" class="text-xl font-mono font-semibold text-gray-800 mt-0.5">12345678901</div>
+                                </div>
+                                <div>
+                                    <label class="text-xs font-bold text-gray-400 uppercase">GÖREV / BİRİM</label>
+                                    <div id="card-birim" class="text-xl font-bold text-blue-700 mt-0.5">Laboratuvar</div>
+                                </div>
+                                <div>
+                                    <label class="text-xs font-bold text-gray-400 uppercase">TELEFON NUMARASI</label>
+                                    <div id="card-tel" class="text-xl text-gray-800 mt-0.5">0500 000 00 00</div>
+                                </div>
+                                <div>
+                                    <label class="text-xs font-bold text-gray-400 uppercase">CİNSİYET / YAŞ</label>
+                                    <div id="card-yas" class="text-xl text-gray-800 mt-0.5">Erkek (34 Yaş)</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-gray-50 p-6 rounded-2xl border border-gray-100 grid grid-cols-2 gap-6 my-6">
+                            <div>
+                                <label class="text-xs font-bold text-blue-500 uppercase">İŞE GİRİŞ TARİHİ</label>
+                                <div id="card-giris" class="text-lg font-semibold text-gray-800">01.01.2024</div>
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-blue-500 uppercase">TOPLAM ÇALIŞMA SÜRESİ</label>
+                                <div id="card-calismagun" class="text-lg font-bold text-gray-800">730 Gün</div>
+                            </div>
+                            <div class="col-span-2 h-px bg-gray-200"></div>
+                            <div>
+                                <label class="text-xs font-bold text-green-600 uppercase">NET MAAŞ</label>
+                                <div id="card-maas" class="text-2xl font-black text-green-700">₺0.00</div>
+                            </div>
+                            <div class="grid grid-cols-3 gap-2 text-center">
+                                <div class="bg-white p-2 rounded-lg border">
+                                    <span class="block text-[10px] text-gray-400 font-bold">HAKKEDİLEN</span>
+                                    <span id="card-izinhak" class="font-bold text-gray-700">0</span>
+                                </div>
+                                <div class="bg-white p-2 rounded-lg border">
+                                    <span class="block text-[10px] text-gray-400 font-bold">KULLANILAN</span>
+                                    <span id="card-izinkul" class="font-bold text-red-600">0</span>
+                                </div>
+                                <div class="bg-white p-2 rounded-lg border bg-emerald-50 border-emerald-200">
+                                    <span class="block text-[10px] text-emerald-500 font-bold">KALAN</span>
+                                    <span id="card-izinkalan" class="font-bold text-emerald-700">0</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="text-xs font-bold text-amber-500 uppercase tracking-wider block mb-1">İDARİ ÖZEL NOTLAR</label>
+                            <div id="card-not" class="bg-amber-50/50 border border-amber-200/60 rounded-xl p-4 text-sm text-gray-700 min-h-24 italic">
+                                Personel hakkında kayıtlı idari bir not bulunmamaktadır.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="border-t border-gray-200 pt-6 flex justify-between items-center text-xs text-gray-400">
+                    <div>
+                        <p>Bu belge elektronik ortamda oluşturulmuştur. Bilgilerin doğruluğu İK departmanı sorumluluğundadır.</p>
+                    </div>
+                    <div class="text-center w-64 border-t border-dashed border-gray-300 pt-4">
+                        <p class="font-bold text-gray-500 uppercase">İnsan Kaynakları Yönetimi</p>
+                        <p class="mt-8 font-serif text-gray-300 text-lg">İmza / Onay</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // LocalStorage üzerinde kalıcı veri yapısı
+        let personeller = JSON.parse(localStorage.getItem('ik_personeller')) || [];
+        let seciliHarf = '';
+
+        const birimler = [
+            "Bakımhane Kazan Dairesi", "Fabrika Bakımcı", "Fabrika Depo", "Güvenlik Görevlisi",
+            "Hat Sonu", "İdari Personel", "İşletme", "Laboratuvar", "Pazarlamacı Satış",
+            "Plastik Bölümü", "Sevkiyat", "Sıvı Bölümü Personel", "Stajyer",
+            "Toz Bölümü Personeli", "Toz Paketleme", "Yemekhane"
+        ];
+
+        // Sayfa Yüklendiğinde
+        window.onload = function() {
+            buildAlphabetFilter();
+            renderTable();
+        };
+
+        function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+        // Harf Filtresi Oluşturma
+        function buildAlphabetFilter() {
+            const alfabe = "ABCÇDEFGĞHIİJKLMNOÖPRSŞTUÜVYZ";
+            const container = document.getElementById('alphabetFilter');
+            container.innerHTML = `<button onclick="filterByLetter('')" class="px-2 py-0.5 text-xs font-bold rounded ${seciliHarf===''?'bg-blue-600 text-white':'text-gray-600 hover:bg-gray-200'}">HEPSİ</button>`;
+            
+            alfabe.split('').forEach(harf => {
+                const btn = document.createElement('button');
+                btn.textContent = harf;
+                btn.className = `px-1.5 py-0.5 text-xs font-bold rounded transition ${seciliHarf === harf ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-200'}`;
+                btn.onclick = () => filterByLetter(harf);
+                container.appendChild(btn);
+            });
+        }
+
+        function filterByLetter(harf) {
+            seciliHarf = harf;
+            buildAlphabetFilter();
+            renderTable();
+        }
+
+        // Yaş ve Gün Hesaplama Fonksiyonları
+        function hesaplaTarihFarki(dateStr) {
+            const giris = new Date(dateStr);
+            const bugun = new Date();
+            const farkZaman = Math.abs(bugun - giris);
+            return Math.ceil(farkZaman / (1000 * 60 * 60 * 24));
+        }
+
+        function hesaplaYas(dateStr) {
+            const dogum = new Date(dateStr);
+            const bugun = new Date();
+            let yas = bugun.getFullYear() - dogum.getFullYear();
+            const m = bugun.getMonth() - dogum.getMonth();
+            if (m < 0 || (m === 0 && bugun.getDate() < dogum.getDate())) { yas--; }
+            return yas;
+        }
+
+        // Yeni Personel Kaydı (Fotoğraf Base64 dönüştürme dahil)
+        function savePersonel(e) {
+            e.preventDefault();
+            const fotoInput = document.getElementById('foto');
+            
+            if (fotoInput.files && fotoInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    executeSave(event.target.result);
+                };
+                reader.readAsDataURL(fotoInput.files[0]);
+            } else {
+                executeSave('');
+            }
+        }
+
+        function executeSave(fotoBase64) {
+            const yeni = {
+                id: Date.now().toString(),
+                sicilNo: document.getElementById('sicilNo').value,
+                adSoyad: document.getElementById('adSoyad').value,
+                tcNo: document.getElementById('tcNo').value,
+                cinsiyet: document.getElementById('cinsiyet').value,
+                dogumTarihi: document.getElementById('dogumTarihi').value,
+                girisTarihi: document.getElementById('girisTarihi').value,
+                birim: document.getElementById('birim').value,
+                maas: parseFloat(document.getElementById('maas').value) || 0,
+                kanGrubu: document.getElementById('kanGrubu').value,
+                telefon: document.getElementById('telefon').value,
+                yillikIzinHak: parseInt(document.getElementById('yillikIzinHak').value) || 0,
+                kullanilanIzin: parseInt(document.getElementById('kullanilanIzin').value) || 0,
+                servis: document.getElementById('servis').value,
+                ozelNot: document.getElementById('ozelNot').value,
+                foto: fotoBase64
+            };
+
+            personeller.push(yeni);
+            localStorage.setItem('ik_personeller', JSON.stringify(personeller));
+            document.getElementById('personelForm').reset();
+            closeModal('personelModal');
+            renderTable();
+        }
+
+        // Personel Silme
+        function deletePersonel(id) {
+            if(confirm('Bu personeli sistemden silmek istediğinize emin misiniz?')) {
+                personeller = personeller.filter(p => p.id !== id);
+                localStorage.setItem('ik_personeller', JSON.stringify(personeller));
+                renderTable();
+            }
+        }
+
+        // Ana Tablo ve İstatistikleri Render Etme
+        function renderTable() {
+            const tbody = document.getElementById('personnelTableBody');
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const sortOption = document.getElementById('sortSelect').value;
+            
+            tbody.innerHTML = '';
+
+            // Filtreleme mantığı
+            let filtrelenmiş = personeller.filter(p => {
+                const aramaKriteri = p.adSoyad.toLowerCase().includes(search) || p.tcNo.includes(search);
+                const harfKriteri = seciliHarf === '' || p.adSoyad.trim().toUpperCase().startsWith(seciliHarf);
+                return aramaKriteri && harfKriteri;
+            });
+
+            // Sıralama Mantığı
+            if (sortOption === 'a-z') {
+                filtrelenmiş.sort((a, b) => a.adSoyad.localeCompare(b.adSoyad, 'tr'));
+            } else if (sortOption === 'z-a') {
+                filtrelenmiş.sort((a, b) => b.adSoyad.localeCompare(a.adSoyad, 'tr'));
+            } else if (sortOption === 'maas-azalan') {
+                filtrelenmiş.sort((a, b) => b.maas - a.maas);
+            } else if (sortOption === 'maas-artan') {
+                filtrelenmiş.sort((a, b) => a.maas - b.maas);
+            } else if (sortOption === 'tarih-yeni') {
+                filtrelenmiş.sort((a, b) => new Date(b.girisTarihi) - new Date(a.girisTarihi));
+            }
+
+            if(filtrelenmiş.length === 0) {
+                document.getElementById('emptyState').classList.remove('hidden');
+            } else {
+                document.getElementById('emptyState').classList.add('hidden');
+            }
+
+            // Tabloyu Yazdır
+            filtrelenmiş.forEach(p => {
+                const calismaGunu = hesaplaTarihFarki(p.girisTarihi);
+                const kalanIzin = p.yillikIzinHak - p.kullanilanIzin;
+                const dummyFoto = `https://via.placeholder.com/100?text=${p.adSoyad.charAt(0)}`;
+                
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-gray-50 border-b border-gray-100 transition";
+                tr.innerHTML = `
+                    <td class="p-4"><img src="${p.foto || dummyFoto}" class="w-10 h-10 object-cover rounded-full border"></td>
+                    <td class="p-4 font-mono font-bold text-gray-600">${p.sicilNo}</td>
+                    <td class="p-4">
+                        <div class="font-semibold text-gray-900">${p.adSoyad}</div>
+                        <div class="text-xs text-gray-400 font-mono">${p.tcNo}</div>
+                    </td>
+                    <td class="p-4">
+                        <span class="px-2 py-1 bg-blue-50 text-blue-700 text-xs font-semibold rounded">${p.birim}</span>
+                        <div class="text-xs text-gray-500 mt-1"><i class="fas fa-bus text-gray-300"></i> ${p.servis}</div>
+                    </td>
+                    <td class="p-4">
+                        <div class="text-xs font-medium">${p.girisTarihi.split('-').reverse().join('.')}</div>
+                        <div class="text-xs text-gray-400 mt-0.5">${calismaGunu} Gün</div>
+                    </td>
+                    <td class="p-4">
+                        <span class="font-bold ${kalanIzin < 0 ? 'text-red-600':'text-emerald-600'}">${kalanIzin} Gün</span>
+                        <div class="text-[10px] text-gray-400">Hak: ${p.yillikIzinHak} / Kul: ${p.kullanilanIzin}</div>
+                    </td>
+                    <td class="p-4 text-right font-bold text-gray-900">₺${p.maas.toLocaleString('tr-TR')}</td>
+                    <td class="p-4 text-center">
+                        <div class="flex justify-center gap-1">
+                            <button onclick="viewCard('${p.id}')" title="Personel Kartını Gör" class="p-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition"><i class="fas fa-eye"></i></button>
+                            <button onclick="deletePersonel('${p.id}')" title="Personeli Sil" class="p-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition"><i class="fas fa-trash-alt"></i></button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            calculateStatistics();
+        }
+
+        // İstatistik Hesaplama ve Görselleştirme
+        function calculateStatistics() {
+            const total = personeller.length;
+            let kadin = 0, erkek = 0, toplamMaas = 0, toplamYas = 0, toplamCalismaGunu = 0;
+            let k6Ay = 0, k1Yil = 0, k2Yil = 0;
+
+            // Departman bazlı veri nesnesi
+            let birimVerileri = {};
+            birimler.forEach(b => birimVerileri[b] = { count: 0, kadin: 0, erkek: 0, maas: 0 });
+
+            personeller.forEach(p => {
+                if(p.cinsiyet === 'Kadın') kadin++; else erkek++;
+                toplamMaas += p.maas;
+                toplamYas += hesaplaYas(p.dogumTarihi);
+                
+                const gun = hesaplaTarihFarki(p.girisTarihi);
+                toplamCalismaGunu += gun;
+
+                if (gun >= 730) k2Yil++;
+                else if (gun >= 365) k1Yil++;
+                else if (gun >= 180) k6Ay++;
+
+                if(birimVerileri[p.birim]) {
+                    birimVerileri[p.birim].count++;
+                    if(p.cinsiyet === 'Kadın') birimVerileri[p.birim].kadin++; else birimVerileri[p.birim].erkek++;
+                    birimVerileri[p.birim].maas += p.maas;
+                }
+            });
+
+            // Üst Kartları Doldur
+            document.getElementById('stat-total').textContent = `${total} Kişi`;
+            document.getElementById('stat-gender').textContent = `${kadin} Kadın / ${erkek} Erkek`;
+            document.getElementById('stat-salary').textContent = `₺${toplamMaas.toLocaleString('tr-TR')}`;
+            document.getElementById('stat-avg-salary').textContent = `Genel Ort: ₺${total ? Math.round(toplamMaas/total).toLocaleString('tr-TR') : 0}`;
+            document.getElementById('stat-avg-age').textContent = `${total ? Math.round(toplamYas/total) : 0} Yaş`;
+            document.getElementById('stat-avg-work').textContent = `${total ? Math.round(toplamCalismaGunu/total) : 0} Gün Ortalama Kıdem`;
+            document.getElementById('stat-kidem-1').textContent = `6+ Ay: ${k6Ay} | 1+ Yıl: ${k1Yil}`;
+            document.getElementById('stat-kidem-2').textContent = `2 Yıldan Fazla Kıdemli: ${k2Yil} Kişi`;
+
+            // Birim Tablosunu Doldur
+            const unitBody = document.getElementById('unit-stats-body');
+            unitBody.innerHTML = '';
+            birimler.forEach(b => {
+                const data = birimVerileri[b];
+                if(data.count > 0) {
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-gray-50 transition";
+                    tr.innerHTML = `
+                        <td class="px-4 py-2.5 font-medium text-gray-800">${b}</td>
+                        <td class="px-4 py-2.5 text-center font-bold text-gray-700">${data.count}</td>
+                        <td class="px-4 py-2.5 text-center text-xs text-gray-500">${data.kadin}K / ${data.erkek}E</td>
+                        <td class="px-4 py-2.5 text-right font-semibold text-gray-900">₺${data.maas.toLocaleString('tr-TR')}</td>
+                        <td class="px-4 py-2.5 text-right text-gray-600">₺${Math.round(data.maas / data.count).toLocaleString('tr-TR')}</td>
+                    `;
+                    unitBody.appendChild(tr);
+                }
+            });
+        }
+
+        // 1400x1400 Personel Kartını Doldurma ve Yapılandırma
+        function viewCard(id) {
+            const p = personeller.find(item => item.id === id);
+            if(!p) return;
+
+            const dummyFoto = `https://via.placeholder.com/300x350?text=${p.adSoyad.replace(' ', '+')}`;
+            
+            // Kart verilerini basma
+            document.getElementById('card-sys-date').textContent = `Döküm Tarihi: ${new Date().toLocaleDateString('tr-TR')}`;
+            document.getElementById('card-foto').src = p.foto || dummyFoto;
+            document.getElementById('card-sicil').textContent = p.sicilNo;
+            document.getElementById('card-kan').textContent = p.kanGrubu.split(' ').pop(); // Sadece (A+) gibi kısmını al
+            document.getElementById('card-servis').textContent = p.servis;
+            document.getElementById('card-adsoyad').textContent = p.adSoyad;
+            document.getElementById('card-tc').textContent = p.tcNo;
+            document.getElementById('card-birim').textContent = p.birim;
+            document.getElementById('card-tel').textContent = p.telefon;
+            document.getElementById('card-yas').textContent = `${p.cinsiyet} (${hesaplaYas(p.dogumTarihi)} Yaş)`;
+            document.getElementById('card-giris').textContent = p.girisTarihi.split('-').reverse().join('.');
+            document.getElementById('card-calismagun').textContent = `${hesaplaTarihFarki(p.girisTarihi)} Gün`;
+            document.getElementById('card-maas').textContent = `₺${p.maas.toLocaleString('tr-TR')}`;
+            document.getElementById('card-izinhak').textContent = p.yillikIzinHak;
+            document.getElementById('card-izinkul').textContent = p.kullanilanIzin;
+            document.getElementById('card-izinkalan').textContent = p.yillikIzinHak - p.kullanilanIzin;
+            document.getElementById('card-not').textContent = p.ozelNot.trim() || "Personel hakkında kayıtlı idari bir not bulunmamaktadır.";
+
+            // Buton Dinamik Link Atamaları
+            // PDF İndirme Aksiyonu
+            document.getElementById('pdfBtn').onclick = function() {
+                const element = document.getElementById('printArea');
+                const opt = {
+                    margin:       0,
+                    filename:     `HES_IK_Kart_${p.sicilNo}_${p.adSoyad.replace(/\s+/g, '_')}.pdf`,
+                    image:        { type: 'jpeg', quality: 1 },
+                    html2canvas:  { scale: 2, useCORS: true },
+                    jsPDF:        { unit: 'px', format: [1400, 1400], orientation: 'portrait' }
+                };
+                html2pdf().set(opt).from(element).save();
+            };
+
+            // WhatsApp Paylaşım Aksiyonu
+            document.getElementById('wpBtn').onclick = function() {
+                const text = `*HES DETERJAN İK PERSONEL KARTI*%0A` +
+                             `*Sicil No:* ${p.sicilNo}%0A` +
+                             `*Ad Soyad:* ${p.adSoyad}%0A` +
+                             `*Birim:* ${p.birim}%0A` +
+                             `*Telefon:* ${p.telefon}%0A` +
+                             `*Kalan İzin:* ${p.yillikIzinHak - p.kullanilanIzin} Gün`;
+                window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+            };
+
+            openModal('cardModal');
+        }
+    </script>
+</body>
+</html>
